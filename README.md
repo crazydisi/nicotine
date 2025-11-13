@@ -38,20 +38,49 @@ nicotine forward        # Cycle to next client
 nicotine backward       # Cycle to previous client
 ```
 
-### Mouse Bindings
+### Mouse Bindings (Optional)
 
-Set up with xbindkeys (`~/.xbindkeysrc`):
+**Step 1: Install xbindkeys**
 ```bash
-# Forward cycle
+# Arch Linux
+sudo pacman -S xbindkeys
+
+# Ubuntu/Debian
+sudo apt install xbindkeys
+
+# Fedora
+sudo dnf install xbindkeys
+```
+
+**Step 2: Create config file**
+```bash
+cat > ~/.xbindkeysrc << 'EOF'
+# Nicotine - Mouse button bindings
 "~/.local/bin/nicotine forward"
     b:9
 
-# Backward cycle
 "~/.local/bin/nicotine backward"
     b:8
+EOF
 ```
 
-Then run `xbindkeys` to activate.
+**Step 3: Start xbindkeys**
+```bash
+killall xbindkeys 2>/dev/null  # Kill old instance
+xbindkeys                       # Start with new config
+```
+
+**Step 4: Autostart xbindkeys (optional)**
+
+Add to your desktop environment's autostart or add to `~/.xinitrc`:
+```bash
+xbindkeys &
+```
+
+**Troubleshooting:**
+- Test if your mouse buttons work: `xev | grep button` then click your side buttons
+- If button 9/8 don't work, try other numbers (common: 8/9, 10/11, or 6/7)
+- Make sure nicotine daemon is running: `ls /tmp/nicotine.sock` should exist
 
 ### Overlay Controls
 
