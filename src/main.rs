@@ -39,7 +39,7 @@ fn main() -> Result<()> {
                 state.lock().unwrap().update_windows(windows);
             }
 
-            if let Err(e) = run_overlay(x11, state, config.overlay_x, config.overlay_y) {
+            if let Err(e) = run_overlay(x11, state, config.overlay_x, config.overlay_y, config) {
                 eprintln!("Overlay error: {}", e);
                 std::process::exit(1);
             }
