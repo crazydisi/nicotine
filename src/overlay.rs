@@ -8,6 +8,7 @@ pub struct OverlayApp {
     x11: Arc<X11Manager>,
     state: Arc<Mutex<CycleState>>,
     config: crate::config::Config,
+    last_drag_pos: Option<egui::Pos2>,
 }
 
 impl OverlayApp {
@@ -21,6 +22,7 @@ impl OverlayApp {
             x11,
             state,
             config,
+            last_drag_pos: None,
         }
     }
 }
@@ -40,7 +42,7 @@ impl eframe::App for OverlayApp {
             state.sync_with_active(active_window);
         }
 
-        egui::CentralPanel::default()
+        let panel_response = egui::CentralPanel::default()
             .frame(
                 egui::Frame::none()
                     .fill(egui::Color32::from_rgba_unmultiplied(0, 0, 0, 200))
@@ -116,6 +118,34 @@ impl eframe::App for OverlayApp {
                     ui.label("Launch EVE clients to begin");
                 }
             });
+
+        // Handle dragging with middle mouse button
+        if ctx.input(|i| i.pointer.middle_down()) {
+            let delta = ctx.input(|i| i.pointer.delta());
+
+            // Store accumulated drag before updating
+            if delta.length() > 0.0 {
+                self.last_drag_pos = Some(self.last_drag_pos.unwrap_or(egui::Pos2::ZERO) + delta);
+            }
+
+            ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+        } else if ctx.input(|i| i.pointer.button_released(egui::PointerButton::Middle)) {
+            // Apply accumulated drag when button is released
+            if let Some(accumulated) = self.last_drag_pos.take() {
+                if accumulated.to_vec2().length() > 1.0 {
+                    if let Some(current_pos) = ctx.input(|i| i.viewport().inner_rect).map(|r| r.min) {
+                        let new_x = (current_pos.x + accumulated.x) as i32;
+                        let new_y = (current_pos.y + accumulated.y) as i32;
+
+                        let _ = std::process::Command::new("wmctrl")
+                            .args(&["-r", "EVE Clients", "-e", &format!("0,{},{},280,450", new_x, new_y)])
+                            .output();
+                    }
+                }
+            }
+        } else if ctx.input(|i| i.pointer.hover_pos()).is_some() {
+            ctx.set_cursor_icon(egui::CursorIcon::Grab);
+        }
     }
 }
 
