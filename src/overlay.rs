@@ -58,7 +58,7 @@ impl eframe::App for OverlayApp {
                 ui.horizontal(|ui| {
                     ui.colored_label(
                         egui::Color32::from_rgb(0, 255, 0),
-                        egui::RichText::new("=== EVE MULTIBOX ===").strong(),
+                        egui::RichText::new("=== NICOTINE ===").strong(),
                     );
                 });
 
@@ -67,7 +67,7 @@ impl eframe::App for OverlayApp {
                 // Status
                 ui.horizontal(|ui| {
                     ui.label("Daemon:");
-                    let daemon_running = std::path::Path::new("/tmp/eve-multibox.sock").exists();
+                    let daemon_running = std::path::Path::new("/tmp/nicotine.sock").exists();
                     if daemon_running {
                         ui.colored_label(egui::Color32::from_rgb(0, 255, 0), "[*] Running");
                     } else {
@@ -135,7 +135,7 @@ impl eframe::App for OverlayApp {
 
                     // Cache the window ID once at the start
                     if self.overlay_window_id.is_none() {
-                        if let Ok(Some(id)) = self.x11.find_window_by_title("EVE Clients") {
+                        if let Ok(Some(id)) = self.x11.find_window_by_title("Nicotine") {
                             self.overlay_window_id = Some(id);
                         }
                     }
@@ -188,7 +188,7 @@ pub fn run_overlay(
     };
 
     eframe::run_native(
-        "EVE Clients",
+        "Nicotine",
         options,
         Box::new(move |cc| {
             // Set X11 window properties after window is created
@@ -196,7 +196,7 @@ pub fn run_overlay(
                 std::thread::sleep(std::time::Duration::from_millis(300));
                 // Use wmctrl to set always on top
                 let _ = std::process::Command::new("wmctrl")
-                    .args(&["-r", "EVE Clients", "-b", "add,above"])
+                    .args(&["-r", "Nicotine", "-b", "add,above"])
                     .output();
             });
             Ok(Box::new(OverlayApp::new(cc, x11, state, config)))

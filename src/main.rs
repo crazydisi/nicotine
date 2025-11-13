@@ -18,12 +18,55 @@ use x11_manager::X11Manager;
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    let command = args.get(1).map(|s| s.as_str()).unwrap_or("overlay");
+    let command = args.get(1).map(|s| s.as_str()).unwrap_or("");
 
     let config = Config::load()?;
     let x11 = Arc::new(X11Manager::new()?);
 
     match command {
+        "start" => {
+            // Fork and daemonize
+            unsafe {
+                let pid = libc::fork();
+                if pid < 0 {
+                    eprintln!("Failed to fork");
+                    std::process::exit(1);
+                } else if pid > 0 {
+                    // Parent process - exit
+                    println!("Nicotine started (PID: {})", pid);
+                    println!("Use 'pkill nicotine' to stop");
+                    std::process::exit(0);
+                }
+                // Child process continues below
+
+                // Create new session
+                libc::setsid();
+            }
+
+            // Start daemon in background thread
+            let x11_daemon = Arc::clone(&x11);
+            std::thread::spawn(move || {
+                let mut daemon = Daemon::new(x11_daemon);
+                if let Err(e) = daemon.run() {
+                    eprintln!("Daemon error: {}", e);
+                }
+            });
+
+            // Wait a bit for daemon to initialize
+            std::thread::sleep(std::time::Duration::from_millis(100));
+
+            // Run overlay in main thread
+            let state = Arc::new(Mutex::new(CycleState::new()));
+            if let Ok(windows) = x11.get_eve_windows() {
+                state.lock().unwrap().update_windows(windows);
+            }
+
+            if let Err(e) = run_overlay(x11, state, config.overlay_x, config.overlay_y, config) {
+                eprintln!("Overlay error: {}", e);
+                std::process::exit(1);
+            }
+        }
+
         "daemon" => {
             println!("Starting EVE Multibox daemon...");
             let mut daemon = Daemon::new(x11);
@@ -78,7 +121,7 @@ fn main() -> Result<()> {
             // Fallback to direct mode
 
             // Try to acquire lock, exit immediately if already running
-            let lock_file = "/tmp/eve-multibox-cycle.lock";
+            let lock_file = "/tmp/nicotine-cycle.lock";
             let mut file = match OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -123,7 +166,7 @@ fn main() -> Result<()> {
             // Fallback to direct mode
 
             // Try to acquire lock, exit immediately if already running
-            let lock_file = "/tmp/eve-multibox-cycle.lock";
+            let lock_file = "/tmp/nicotine-cycle.lock";
             let mut file = match OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -164,18 +207,21 @@ fn main() -> Result<()> {
         }
 
         _ => {
-            println!("EVE Multibox - Rust Edition");
+            println!("Nicotine - EVE Online Multiboxing Tool");
             println!();
             println!("Usage:");
-            println!("  eve-multibox daemon        - Start background daemon (recommended)");
-            println!("  eve-multibox overlay       - Start the overlay");
-            println!("  eve-multibox stack         - Stack all EVE windows");
-            println!("  eve-multibox forward       - Cycle forward");
-            println!("  eve-multibox backward      - Cycle backward");
-            println!("  eve-multibox init-config   - Create default config.toml");
+            println!("  nicotine start         - Start everything (daemon + overlay)");
+            println!("  nicotine stack         - Stack all EVE windows");
+            println!("  nicotine forward       - Cycle forward");
+            println!("  nicotine backward      - Cycle backward");
+            println!("  nicotine init-config   - Create default config.toml");
             println!();
-            println!("Note: For best performance, start the daemon first:");
-            println!("  eve-multibox daemon &");
+            println!("Advanced:");
+            println!("  nicotine daemon        - Start daemon only");
+            println!("  nicotine overlay       - Start overlay only");
+            println!();
+            println!("Quick start:");
+            println!("  nicotine start         # Starts in background automatically");
         }
     }
 

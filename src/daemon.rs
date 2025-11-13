@@ -7,7 +7,7 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 
-const SOCKET_PATH: &str = "/tmp/eve-multibox.sock";
+const SOCKET_PATH: &str = "/tmp/nicotine.sock";
 
 #[derive(Debug)]
 pub enum Command {
