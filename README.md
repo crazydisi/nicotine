@@ -2,9 +2,9 @@
   <img src="assets/ghlogo.png" alt="Nicotine Logo" width="600">
 </div>
 
-# Nicotine 🚬 
+# Nicotine 🚬
 
-High-performance EVE Online multiboxing tool for X11/Linux, inspired by EVE-O Preview.
+High-performance EVE Online multiboxing tool for Linux (X11 & Wayland), inspired by EVE-O Preview.
 
 [Illuminated is recruiting!](https://illuminatedcorp.com)
 
@@ -14,8 +14,9 @@ High-performance EVE Online multiboxing tool for X11/Linux, inspired by EVE-O Pr
 - **Always-on-top overlay** showing all clients and their status
 - **Daemon architecture** for near-zero-latency window switching
 - **Auto-stack windows** to perfectly center multiple EVE clients
-- **Draggable overlay** with middle-mouse button
+- **Draggable overlay** with middle-mouse button (X11 only)
 - **Auto-detects display resolution** - works on any monitor setup
+- **Multi-compositor support** - Works on X11, KDE Plasma (Wayland), Sway, and Hyprland
 
 ## Quick Install
 
@@ -55,136 +56,125 @@ nicotine forward        # Cycle to next client
 nicotine backward       # Cycle to previous client
 ```
 
-### Mouse Bindings (Optional)
+### Mouse Bindings
 
-**Step 1: Install xbindkeys**
-```bash
-# Arch Linux
-sudo pacman -S xbindkeys
+**Native Support (Works on X11 & Wayland):**
 
-# Ubuntu/Debian
-sudo apt install xbindkeys
+Nicotine has built-in mouse button detection that works universally across all display servers and compositors
 
-# Fedora
-sudo dnf install xbindkeys
+**Quick Setup:**
+1. Add your user to the `input` group:
+   ```bash
+   sudo usermod -a -G input $USER
+   ```
+2. **Log out and log back in** (required for group membership to take effect)
+3. Start Nicotine - mouse buttons work automatically!
+
+**Configuration:**
+Edit `~/.config/nicotine/config.toml` to customize:
+```toml
+enable_mouse_buttons = true
+forward_button = 276   # Button 9 (forward/side button)
+backward_button = 275  # Button 8 (backward button)
 ```
 
-**Step 2: Create config file**
+**Common button codes:**
+- `275` = BTN_EXTRA (button 8, backward)
+- `276` = BTN_SIDE (button 9, forward)
+- `277` = BTN_FORWARD
+- `278` = BTN_BACK
+
+**Find your button codes:**
 ```bash
-cat > ~/.xbindkeysrc << 'EOF'
-# Nicotine - Mouse button bindings
-"~/.local/bin/nicotine forward"
-    b:9
-
-"~/.local/bin/nicotine backward"
-    b:8
-EOF
-```
-
-**Step 3: Start xbindkeys**
-```bash
-killall xbindkeys 2>/dev/null  # Kill old instance
-xbindkeys                       # Start with new config
-```
-
-**Step 4: Autostart xbindkeys (optional)**
-
-Add to your desktop environment's autostart or add to `~/.xinitrc`:
-```bash
-xbindkeys &
+sudo evtest  # Select your mouse, then click buttons to see their codes
 ```
 
 **Troubleshooting:**
-- Test if your mouse buttons work: `xev | grep button` then click your side buttons
-- If button 9/8 don't work, try other numbers (common: 8/9, 10/11, or 6/7)
-- Make sure nicotine daemon is running: `ls /tmp/nicotine.sock` should exist
+- Verify group membership: `groups | grep input`
+- Check permissions: `ls -l /dev/input/event*`
+- Disable if needed: `enable_mouse_buttons = false` in config
 
 ### Overlay Controls
 
 - **Restack Windows** - Re-center all EVE clients
 - **Daemon status** - Green = running, Red = stopped
 - **Client list** - Shows all EVE clients with active indicator (>)
-- **Middle-click drag** - Move the overlay anywhere
+- **Middle-click drag** - Move the overlay (X11 only)
 
 ## Configuration
 
 Config file: `~/.config/nicotine/config.toml`
 
-Auto-generated on first run based on your display. Example:
+Auto-generated on first run. Key settings:
 
 ```toml
 display_width = 1920
 display_height = 1080
-panel_height = 0        # Set this if you have a taskbar/panel
-eve_width = 1037        # ~54% of display width
+panel_height = 0           # Set this if you have a taskbar/panel
+eve_width = 1037           # ~54% of display width
 eve_height = 1080
 overlay_x = 10.0
 overlay_y = 10.0
+enable_mouse_buttons = true
+forward_button = 276       # Button 9
+backward_button = 275      # Button 8
 ```
-
-Edit and restart to apply changes.
-
-## Autostart on Login (Optional)
-
-Create systemd service:
-
-```bash
-mkdir -p ~/.config/systemd/user
-cat > ~/.config/systemd/user/nicotine.service << 'EOF'
-[Unit]
-Description=Nicotine - EVE Online Multiboxing
-After=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart=%h/.local/bin/nicotine start
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-EOF
-
-systemctl --user enable --now nicotine
-```
-
-Control with:
-- `systemctl --user start nicotine` - Start now
-- `systemctl --user stop nicotine` - Stop
-- `systemctl --user status nicotine` - Check status
 
 ## Architecture
 
-- **Daemon mode**: Maintains X11 connection and state in memory for instant cycling
+- **Daemon mode**: Maintains window manager connection and state in memory for instant cycling
 - **Unix socket IPC**: ~2ms command latency (vs ~50-100ms process spawning)
-- **Fire-and-forget X11**: Non-blocking window activation
-- **Cached atoms**: Pre-cached `_NET_ACTIVE_WINDOW` for zero overhead
+- **Non-blocking activation**: Fire-and-forget window switching
+- **Native mouse support**: Direct evdev access for universal mouse button detection
 
 ## Requirements
 
-- **X11** (not Wayland)
-- **wmctrl** - Window management
-- **xbindkeys** - Mouse button bindings (optional, for hotkeys)
+### Display Server Support
 
-### Install Dependencies
+Nicotine supports both **X11** and **Wayland** (compositor-dependent):
 
-**Arch Linux:**
+- **X11** - Full support (all features)
+- **Wayland - KDE Plasma** - Full support via wmctrl (XWayland)
+- **Wayland - Sway** - Full support via swaymsg
+- **Wayland - Hyprland** - Full support via hyprctl
+- **Wayland - GNOME** - Not supported (restrictive APIs)
+
+### Dependencies
+
+**Required:**
+- **wmctrl** - Window management on X11 and KDE Plasma Wayland
+
+**Wayland-specific (compositor tools):**
+- **KDE Plasma:** wmctrl (uses XWayland compatibility)
+- **Sway:** swaymsg (included with sway)
+- **Hyprland:** hyprctl (included with hyprland)
+
+**Install:**
 ```bash
-sudo pacman -S wmctrl xbindkeys
+# Arch
+sudo pacman -S wmctrl
+
+# Ubuntu/Debian
+sudo apt install wmctrl
+
+# Fedora
+sudo dnf install wmctrl
 ```
 
-**Ubuntu/Debian:**
-```bash
-sudo apt install wmctrl xbindkeys
-```
+For **mouse button support**, add yourself to the `input` group (see Mouse Bindings section).
 
-**Fedora:**
-```bash
-sudo dnf install wmctrl xbindkeys
-```
+## Wayland Support & Known Limitations
 
-## Performance Notes
+**What works:**
+- Mouse buttons (native evdev support, no external tools needed)
+- Window detection and cycling (all supported compositors)
+- Window stacking (KDE/Sway/Hyprland)
+- Auto-detection of display server and compositor
 
-This tool is optimized for EVE Online multiboxing where instant client switching is critical during combat. The daemon architecture ensures cycling never blocks on EVE client rendering, even when opening resource-intensive UI elements like the New Eden Store.
+**Limitations:**
+- Overlay dragging disabled on Wayland (security model prevents arbitrary window positioning)
+  - Workaround: Use compositor window management (e.g., Super+drag)
+- GNOME not supported (restrictive window management APIs)
 
 ## Building from Source
 
@@ -201,7 +191,3 @@ cargo build --release
 ## License
 
 MIT
-
-## Credits
-
-Inspired by EVE-O Preview for Windows.
