@@ -12,6 +12,30 @@ pub struct Config {
     pub eve_height: u32,
     pub overlay_x: f32,
     pub overlay_y: f32,
+    #[serde(default = "default_enable_mouse")]
+    pub enable_mouse_buttons: bool,
+    #[serde(default = "default_forward_button")]
+    pub forward_button: u16, // BTN_SIDE (mouse button 9)
+    #[serde(default = "default_backward_button")]
+    pub backward_button: u16, // BTN_EXTRA (mouse button 8)
+    #[serde(default = "default_show_overlay")]
+    pub show_overlay: bool,
+}
+
+fn default_enable_mouse() -> bool {
+    true
+}
+
+fn default_forward_button() -> u16 {
+    276 // BTN_SIDE (forward button, mouse button 9)
+}
+
+fn default_backward_button() -> u16 {
+    275 // BTN_EXTRA (backward button, mouse button 8)
+}
+
+fn default_show_overlay() -> bool {
+    true
 }
 
 impl Config {
@@ -69,6 +93,10 @@ impl Config {
             eve_height: display_height,
             overlay_x: 10.0,
             overlay_y: 10.0,
+            enable_mouse_buttons: true,
+            forward_button: 276,  // BTN_SIDE (button 9)
+            backward_button: 275, // BTN_EXTRA (button 8)
+            show_overlay: true,
         };
 
         // Save the generated config
@@ -95,6 +123,10 @@ impl Config {
             eve_height: display_height,
             overlay_x: 10.0,
             overlay_y: 10.0,
+            enable_mouse_buttons: true,
+            forward_button: 276,
+            backward_button: 275,
+            show_overlay: true,
         };
 
         if let Some(parent) = config_path.parent() {
@@ -104,14 +136,6 @@ impl Config {
         fs::write(&config_path, contents)?;
         println!("Created config: {}", config_path.display());
         Ok(())
-    }
-
-    pub fn eve_x(&self) -> i32 {
-        ((self.display_width - self.eve_width) / 2) as i32
-    }
-
-    pub fn eve_y(&self) -> i32 {
-        0
     }
 
     pub fn eve_height_adjusted(&self) -> u32 {
@@ -124,37 +148,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_eve_x_centers_window() {
-        let config = Config {
-            display_width: 1920,
-            display_height: 1080,
-            panel_height: 0,
-            eve_width: 1000,
-            eve_height: 1080,
-            overlay_x: 10.0,
-            overlay_y: 10.0,
-        };
-
-        // Window should be centered: (1920 - 1000) / 2 = 460
-        assert_eq!(config.eve_x(), 460);
-    }
-
-    #[test]
-    fn test_eve_y_is_zero() {
-        let config = Config {
-            display_width: 1920,
-            display_height: 1080,
-            panel_height: 0,
-            eve_width: 1000,
-            eve_height: 1080,
-            overlay_x: 10.0,
-            overlay_y: 10.0,
-        };
-
-        assert_eq!(config.eve_y(), 0);
-    }
-
-    #[test]
     fn test_eve_height_adjusted_with_panel() {
         let config = Config {
             display_width: 1920,
@@ -164,6 +157,10 @@ mod tests {
             eve_height: 1080,
             overlay_x: 10.0,
             overlay_y: 10.0,
+            enable_mouse_buttons: true,
+            forward_button: 276,
+            backward_button: 275,
+            show_overlay: true,
         };
 
         // Height should be: 1080 - 40 = 1040
@@ -180,6 +177,10 @@ mod tests {
             eve_height: 1080,
             overlay_x: 10.0,
             overlay_y: 10.0,
+            enable_mouse_buttons: true,
+            forward_button: 276,
+            backward_button: 275,
+            show_overlay: true,
         };
 
         assert_eq!(config.eve_height_adjusted(), 1080);
@@ -195,6 +196,10 @@ mod tests {
             eve_height: 2160,
             overlay_x: 10.0,
             overlay_y: 10.0,
+            enable_mouse_buttons: true,
+            forward_button: 276,
+            backward_button: 275,
+            show_overlay: true,
         };
 
         let toml_str = toml::to_string(&config).unwrap();
