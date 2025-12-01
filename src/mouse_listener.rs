@@ -16,15 +16,54 @@ impl MouseListener {
     }
 
     /// Find mouse device by looking for devices with BTN_SIDE or BTN_EXTRA capabilities
-    /// If a device path is provided in the config, it will be used directly
-    fn find_mouse_device(configured_path: Option<&str>) -> Result<Device> {
-        // Try configured path first
+    /// Priority order: configured device name -> configured device path -> auto-detect
+    fn find_mouse_device(
+        configured_name: Option<&str>,
+        configured_path: Option<&str>,
+    ) -> Result<Device> {
+        let devices_path = Path::new("/dev/input");
+
+        // 1. Try configured device name first (highest priority)
+        if let Some(device_name) = configured_name {
+            println!("Searching for device by name: {}", device_name);
+
+            for entry in std::fs::read_dir(devices_path)? {
+                let entry = entry?;
+                let path = entry.path();
+
+                if let Some(filename) = path.file_name() {
+                    if let Some(name) = filename.to_str() {
+                        if name.starts_with("event") {
+                            if let Ok(device) = Device::open(&path) {
+                                if let Some(dev_name) = device.name() {
+                                    if dev_name == device_name {
+                                        println!(
+                                            "Using configured mouse device by name: {} ({})",
+                                            dev_name,
+                                            path.display()
+                                        );
+                                        return Ok(device);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            eprintln!(
+                "Warning: Failed to find device with name '{}'. Trying other methods...",
+                device_name
+            );
+        }
+
+        // 2. Try configured path second
         if let Some(path_str) = configured_path {
             let path = Path::new(path_str);
             match Device::open(path) {
                 Ok(device) => {
                     println!(
-                        "Using configured mouse device: {} ({})",
+                        "Using configured mouse device by path: {} ({})",
                         device.name().unwrap_or("Unknown"),
                         path.display()
                     );
@@ -40,9 +79,7 @@ impl MouseListener {
             }
         }
 
-        // Fall back to automatic detection
-        let devices_path = Path::new("/dev/input");
-
+        // 3. Fall back to automatic detection (lowest priority)
         for entry in std::fs::read_dir(devices_path)? {
             let entry = entry?;
             let path = entry.path();
@@ -83,6 +120,7 @@ impl MouseListener {
 
         let forward_button = self.config.forward_button;
         let backward_button = self.config.backward_button;
+        let mouse_device_name = self.config.mouse_device_name.clone();
         let mouse_device_path = self.config.mouse_device_path.clone();
         let minimize_inactive = self.config.minimize_inactive;
 
@@ -92,6 +130,7 @@ impl MouseListener {
                 state,
                 forward_button,
                 backward_button,
+                mouse_device_name,
                 mouse_device_path,
                 minimize_inactive,
             ) {
@@ -108,10 +147,15 @@ impl MouseListener {
         state: Arc<Mutex<CycleState>>,
         forward_button: u16,
         backward_button: u16,
+        mouse_device_name: Option<String>,
         mouse_device_path: Option<String>,
         minimize_inactive: bool,
     ) -> Result<()> {
-        let mut device = Self::find_mouse_device(mouse_device_path.as_deref()).context(
+        let mut device = Self::find_mouse_device(
+            mouse_device_name.as_deref(),
+            mouse_device_path.as_deref(),
+        )
+        .context(
             "Failed to find mouse device. Make sure you have permission to read /dev/input/event*",
         )?;
 

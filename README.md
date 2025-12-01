@@ -97,8 +97,27 @@ Edit `~/.config/nicotine/config.toml` to customize:
 enable_mouse_buttons = true
 forward_button = 276   # Button 9 (forward/side button)
 backward_button = 275  # Button 8 (backward button)
+mouse_device_name = "" # Optional takes priority over mouse_device_path, use evtest to find name of the device
 mouse_device_path = "/dev/input/event3" # Optional and not created on first run, find the correct device with evtest
 ```
+If using mouse_device_name the string must be na exact match, you can list your devices with evtest.
+
+```
+$ sudo evtest
+...
+/dev/input/event16:     Logitech PRO X
+...
+```
+In `~/.config/nicotine/config.toml` set
+
+```
+mouse_device_name = "Logitech PRO X"
+```
+
+Device is configuration priority order is:
+1. Name
+2. Path
+3. Autodetect
 
 **Common button codes:**
 - `275` = BTN_EXTRA (button 8, backward)
